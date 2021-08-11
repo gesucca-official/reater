@@ -67,6 +67,8 @@ public class EatingServiceImpl implements EatingService {
         List<String> tokens = extractTokens(sentence);
         List<String> posTags = extractPartOfSpeechTags(tokens);
 
+        this.model.getLengths().add(tokens.size());
+
         for (int i = 0; i < tokens.size(); i++) {
             Node tokenNode = new Node(tokens.get(i));
             tokenNode.getMetaData().put("posTag", posTags.get(i));

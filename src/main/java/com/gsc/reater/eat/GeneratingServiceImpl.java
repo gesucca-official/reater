@@ -1,5 +1,6 @@
 package com.gsc.reater.eat;
 
+import com.gsc.reater.model.Network;
 import com.gsc.reater.model.Node;
 import com.gsc.reater.model.ReaterModel;
 import org.springframework.stereotype.Service;
@@ -35,12 +36,41 @@ public class GeneratingServiceImpl implements GeneratingService {
         StringBuilder sentence = new StringBuilder();
         Node currentToken = chooseEntryPoint(model);
         appendToSentence(sentence, currentToken, null);
+        int currentSentenceLength = 1;
         while (currentToken.getLinks().size() > 0) {
             Node previousToken = currentToken;
             currentToken = chooseNextToken(currentToken, model);
             appendToSentence(sentence, currentToken, previousToken);
+            currentSentenceLength++;
+            int chance = randomToMax(100);
+            if (Math.abs(currentSentenceLength - model.getAvgLength()) > model.getLengthsStdDev())
+                if (chance < 20 && hasTerminalLinks(currentToken, model.getTokensNetwork())) {
+                    appendToSentence(sentence, chooseTerminalLinks(currentToken, model.getTokensNetwork()), currentToken);
+                    break;
+                } else if (chance < 60 && hasTerminalLinks(currentToken, model.getTokensNetwork())) {
+                    appendToSentence(sentence, chooseTerminalLinks(currentToken, model.getTokensNetwork()), currentToken);
+                    break;
+                }
         }
         return sentence.toString();
+    }
+
+    private boolean hasTerminalLinks(Node node, Network network) {
+        for (String l : node.getLinks().keySet())
+            if (network.deepSearch(l).isTerminal())
+                return true;
+        return false;
+    }
+
+    private Node chooseTerminalLinks(Node node, Network network) {
+        List<Node> candidates = new ArrayList<>();
+        for (String l : node.getLinks().keySet())
+            if (network.deepSearch(l).isTerminal())
+                for (int i = 0; i < node.getLinks().get(l); i++)
+                    candidates.add(network.deepSearch(l));
+        return candidates.get(
+                randomToMax(candidates.size() - 1)
+        );
     }
 
     private Node chooseNextToken(Node currentNode, ReaterModel model) {

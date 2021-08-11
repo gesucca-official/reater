@@ -3,9 +3,7 @@ package com.gsc.reater.model;
 import lombok.Getter;
 
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 @Getter
 public class Node implements Serializable {
@@ -18,6 +16,10 @@ public class Node implements Serializable {
 
     public Node(String content) {
         this.content = content;
+    }
+
+    public boolean isTerminal() {
+        return links.size() == 0;
     }
 
     public void addLinkTo(Node destination) {
