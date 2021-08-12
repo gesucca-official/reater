@@ -1,16 +1,20 @@
-package com.gsc.reater.eat;
+package com.gsc.reater.service.eat;
 
 import com.gsc.reater.model.Network;
 import com.gsc.reater.model.Node;
 import com.gsc.reater.model.ReaterModel;
+import com.gsc.reater.service.gen.FileInputOutputService;
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTaggerME;
 import opennlp.tools.sentdetect.SentenceDetectorME;
 import opennlp.tools.sentdetect.SentenceModel;
 import opennlp.tools.tokenize.SimpleTokenizer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.InputMismatchException;
@@ -20,9 +24,16 @@ import java.util.stream.Collectors;
 @Service
 public class EatingServiceImpl implements EatingService {
 
+    private final FileInputOutputService fileInputOutputService;
+
     private static final String NO_INPUT_FILE_CONTENT = "NO CONTENT";
 
     private final ReaterModel model = new ReaterModel();
+
+    @Autowired
+    public EatingServiceImpl(FileInputOutputService fileInputOutputService) {
+        this.fileInputOutputService = fileInputOutputService;
+    }
 
     @Override
     public void eat(String pathToInput, String pathToOutput) {
@@ -33,7 +44,7 @@ public class EatingServiceImpl implements EatingService {
         List<String> sentences = extractSentences(input);
         for (String sentence : sentences)
             digestSentence(sentence);
-        writeOutputFile(pathToOutput);
+        fileInputOutputService.saveModelFile(pathToOutput, this.model);
     }
 
     private String readFile(String pathToInput) {
@@ -105,15 +116,4 @@ public class EatingServiceImpl implements EatingService {
         return List.of();
     }
 
-    private void writeOutputFile(String pathToOutput) {
-        try {
-            FileOutputStream f = new FileOutputStream(pathToOutput);
-            ObjectOutputStream o = new ObjectOutputStream(f);
-            o.writeObject(model);
-            o.close();
-            f.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 }

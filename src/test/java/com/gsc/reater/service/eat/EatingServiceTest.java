@@ -1,4 +1,4 @@
-package com.gsc.reater.eat;
+package com.gsc.reater.service.eat;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -3,7 +3,9 @@ package com.gsc.reater.model;
 import lombok.Getter;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
 @Getter
 public class Node implements Serializable {
@@ -19,7 +21,7 @@ public class Node implements Serializable {
     }
 
     public boolean isTerminal() {
-        return links.size() == 0;
+        return links.size() == 0; // TODO this cannot be the sole condition to be terminal
     }
 
     public void addLinkTo(Node destination) {

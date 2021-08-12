@@ -1,4 +1,4 @@
-package com.gsc.reater.eat;
+package com.gsc.reater.service.eat;
 
 public interface EatingService {
 

@@ -1,14 +1,14 @@
-package com.gsc.reater.eat;
+package com.gsc.reater.service.shit;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class GeneratingServiceTest {
+class ShittingServiceTest {
 
     @Autowired
-    GeneratingService service;
+    ShittingService service;
 
     @Test
     void generate() {
