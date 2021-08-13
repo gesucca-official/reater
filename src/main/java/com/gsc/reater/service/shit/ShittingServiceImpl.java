@@ -37,7 +37,7 @@ public class ShittingServiceImpl implements ShittingService {
         if (optionalModel.isEmpty())
             throw new RuntimeException("Could not load Reater Model");
 
-        log.info("\n" + optionalModel.get());
+        log.info(optionalModel.get().toString());
 
         List<String> sentences = new ArrayList<>(numberOfSentences);
         for (int i = 0; i < numberOfSentences; i++) {
@@ -63,9 +63,12 @@ public class ShittingServiceImpl implements ShittingService {
     }
 
     private boolean forceEndOfSentence(ReaterModel model, StringBuilder sentence, Node currentNode, int currentSentenceLength) {
+        if (currentNode.getContent().getPos().equals("FS")) // naturally chosen eof
+            return true;
+
         int chance = mathService.randomToMax(100);
         boolean isInStdDevRange = Math.abs(currentSentenceLength - model.getAvgLength()) < model.getLengthsStdDev();
-        boolean sentenceCanBeEnded = sentenceBuildingService.hasTerminalLinks(currentNode, model.getTokensNetwork());
+        boolean sentenceCanBeEnded = sentenceBuildingService.hasTerminalLinks(currentNode, model.getNetwork());
 
         log.info("Sentence Length: " + currentSentenceLength);
         log.info("Is Sentence Length in StdDev Range? " + isInStdDevRange);
@@ -84,7 +87,7 @@ public class ShittingServiceImpl implements ShittingService {
     private boolean appendFinalToken(ReaterModel model, StringBuilder sentence, Node currentNode, String s) {
         log.info(s);
         sentenceBuildingService.localizedAppend(
-                sentenceBuildingService.chooseAmongTerminalLinks(currentNode, model.getTokensNetwork()), currentNode, sentence, SupportedLanguages.IT);
+                sentenceBuildingService.chooseAmongTerminalLinks(currentNode, model.getNetwork()), currentNode, sentence, SupportedLanguages.IT);
         return true;
     }
 

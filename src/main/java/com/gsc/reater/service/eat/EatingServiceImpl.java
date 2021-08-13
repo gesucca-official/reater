@@ -2,61 +2,58 @@ package com.gsc.reater.service.eat;
 
 import com.gsc.reater.model.Network;
 import com.gsc.reater.model.Node;
+import com.gsc.reater.model.NodeContent;
 import com.gsc.reater.model.ReaterModel;
 import com.gsc.reater.service.gen.FileInputOutputService;
+import com.gsc.reater.service.gen.GeneralMathService;
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTaggerME;
 import opennlp.tools.sentdetect.SentenceDetectorME;
 import opennlp.tools.sentdetect.SentenceModel;
 import opennlp.tools.tokenize.SimpleTokenizer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.InputMismatchException;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 @Service
 public class EatingServiceImpl implements EatingService {
 
     private final FileInputOutputService fileInputOutputService;
+    private final GeneralMathService mathService;
 
-    private static final String NO_INPUT_FILE_CONTENT = "NO CONTENT";
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
-    private final ReaterModel model = new ReaterModel();
+    // working variables - is this an antipattern?
+    private ReaterModel model;
+    private Set<Integer> sentenceLengths;
 
     @Autowired
-    public EatingServiceImpl(FileInputOutputService fileInputOutputService) {
+    public EatingServiceImpl(FileInputOutputService fileInputOutputService, GeneralMathService mathService) {
         this.fileInputOutputService = fileInputOutputService;
+        this.mathService = mathService;
     }
 
     @Override
     public void eat(String pathToInput, String pathToOutput) {
-        String input = readFile(pathToInput);
-        if (input.equals(EatingServiceImpl.NO_INPUT_FILE_CONTENT))
-            throw new InputMismatchException("Invalid or Empty Input File");
+        this.model = new ReaterModel();
+        this.sentenceLengths = new HashSet<>();
 
-        List<String> sentences = extractSentences(input);
+        List<String> sentences = extractSentences(fileInputOutputService.readRawTextFile(pathToInput));
         for (String sentence : sentences)
             digestSentence(sentence);
-        fileInputOutputService.saveModelFile(pathToOutput, this.model);
-    }
 
-    private String readFile(String pathToInput) {
-        String content = EatingServiceImpl.NO_INPUT_FILE_CONTENT;
-        try {
-            BufferedReader reader = Files.newBufferedReader(Paths.get(pathToInput));
-            content = reader.lines().collect(Collectors.joining(" "));
-            reader.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return content;
+        model.setAvgLength(mathService.avgLength(sentenceLengths));
+        model.setLengthsStdDev(mathService.lengthsStdDev(sentenceLengths));
+
+        fileInputOutputService.saveModelFile(pathToOutput, this.model);
     }
 
     private List<String> extractSentences(String input) {
@@ -73,24 +70,30 @@ public class EatingServiceImpl implements EatingService {
     }
 
     private void digestSentence(String sentence) {
-        System.out.println("***********");
-        System.out.println("sentence " + sentence);
+        log.info("Digesting Sentence: " + sentence);
         List<String> tokens = extractTokens(sentence);
         List<String> posTags = extractPartOfSpeechTags(tokens);
+        log.info("Extracted Tokens: " + tokens);
+        log.info("Extracted POS Tags: " + posTags);
 
-        this.model.getLengths().add(tokens.size());
+        this.sentenceLengths.add(tokens.size());
 
         for (int i = 0; i < tokens.size(); i++) {
-            Node tokenNode = new Node(tokens.get(i));
-            tokenNode.getMetaData().put("posTag", posTags.get(i));
-            addToNetwork(tokenNode, i > 0 ? tokens.get(i - 1) : null, this.model.getTokensNetwork());
-
-            Node posNode = new Node(posTags.get(i));
-            addToNetwork(posNode, i > 0 ? posTags.get(i - 1) : null, this.model.getPosNetwork());
+            log.info("Processing " + tokens.get(i));
+            Node tokenNode = new Node(tokens.get(i), posTags.get(i));
+            addPreviousPosChain(tokenNode, posTags, i);
+            addToNetwork(tokenNode, i > 0 ? new NodeContent(tokens.get(i - 1), posTags.get(i - 1)) : null, this.model.getNetwork());
+            log.info("Created and inserted Node: " + tokenNode);
         }
     }
 
-    private void addToNetwork(Node node, String prevValue, Network network) {
+    private void addPreviousPosChain(Node tokenNode, List<String> posTags, int i) {
+        if (i == 0)
+            return;
+        tokenNode.getPreviousPosChains().add(new ArrayList<>(posTags.subList(0, i)));
+    }
+
+    private void addToNetwork(Node node, NodeContent prevValue, Network network) {
         if (prevValue == null)
             network.addEntryPoint(node);
         else {

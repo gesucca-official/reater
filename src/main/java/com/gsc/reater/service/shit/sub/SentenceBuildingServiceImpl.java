@@ -34,9 +34,11 @@ public class SentenceBuildingServiceImpl implements SentenceBuildingService {
         log.info("Choosing Entry Point...");
 
         List<Node> entryPointCandidates = new ArrayList<>();
-        for (String entryPointContent : model.getTokensNetwork().getEntryPoints().keySet())
-            for (int i = 0; i < model.getTokensNetwork().getEntryPoints().get(entryPointContent); i++)
-                entryPointCandidates.add(model.getTokensNetwork().deepSearch(entryPointContent));
+        for (int entryPointHash : model.getNetwork().getEntryPoints().keySet())
+            for (int i = 0; i < model.getNetwork().getEntryPoints().get(entryPointHash); i++)
+                entryPointCandidates.add(
+                        model.getNetwork().deepSearch(entryPointHash)
+                );
         log.info("Candidates (multiplied by weight): " + prettifyCandidates(entryPointCandidates));
 
         Node chosen = entryPointCandidates.get(mathService.randomToMax(entryPointCandidates.size() - 1));
@@ -46,12 +48,13 @@ public class SentenceBuildingServiceImpl implements SentenceBuildingService {
 
     @Override
     public Node chooseNextToken(Node currentNode, ReaterModel model) {
+        // TODO choose based on similarity btwn current built phrase and next token previous pos chain
         log.info("Choosing Next Node... (current=" + currentNode.getContent() + ")");
 
         List<Node> nextTokenCandidates = new ArrayList<>();
-        for (String l : currentNode.getLinks().keySet()) {
+        for (int l : currentNode.getLinks().keySet()) {
             for (int i = 0; i < currentNode.getLinks().get(l); i++)
-                nextTokenCandidates.add(model.getTokensNetwork().deepSearch(l));
+                nextTokenCandidates.add(model.getNetwork().deepSearch(l));
         }
         log.info("Candidates (multiplied by weight): " + prettifyCandidates(nextTokenCandidates));
 
@@ -62,7 +65,7 @@ public class SentenceBuildingServiceImpl implements SentenceBuildingService {
 
     @Override
     public boolean hasTerminalLinks(Node node, Network network) {
-        for (String l : node.getLinks().keySet())
+        for (int l : node.getLinks().keySet())
             if (isTerminal(network.deepSearch(l)))
                 return true;
         return false;
@@ -73,7 +76,7 @@ public class SentenceBuildingServiceImpl implements SentenceBuildingService {
         log.info("Choosing Terminal Node... (current=" + node.getContent() + ")");
 
         List<Node> candidates = new ArrayList<>();
-        for (String l : node.getLinks().keySet())
+        for (int l : node.getLinks().keySet())
             if (isTerminal(network.deepSearch(l)))
                 for (int i = 0; i < node.getLinks().get(l); i++)
                     candidates.add(network.deepSearch(l));
@@ -86,12 +89,12 @@ public class SentenceBuildingServiceImpl implements SentenceBuildingService {
 
     @Override
     public void localizedAppend(Node currentNode, Node previousNode, StringBuilder sentence, SupportedLanguages lang) {
-        if (SentenceBuildingServiceImpl.IT_POS_PUNCTUATION.contains(currentNode.getMetaData().get("posTag"))
-                || currentNode.getContent().equals("'")) // connect apostrophe
+        if (SentenceBuildingServiceImpl.IT_POS_PUNCTUATION.contains(currentNode.getContent().getPos())
+                || currentNode.getContent().getToken().equals("'")) // connect apostrophe
             sentence.setLength(sentence.length() - 1);
-        sentence.append(currentNode.getContent());
-        if (!SentenceBuildingServiceImpl.IT_POS_BAL_PUNCT.contains(currentNode.getMetaData().get("posTag"))
-                || (currentNode.getContent().equals("po") && currentNode.getContent().equals("'")))
+        sentence.append(currentNode.getContent().getToken());
+        if (!SentenceBuildingServiceImpl.IT_POS_BAL_PUNCT.contains(currentNode.getContent().getPos())
+                || (currentNode.getContent().getToken().equals("po") && currentNode.getContent().getToken().equals("'")))
             sentence.append(" ");
         log.info("Sentence so far: " + sentence);
     }
@@ -111,6 +114,6 @@ public class SentenceBuildingServiceImpl implements SentenceBuildingService {
     }
 
     private boolean isTerminal(Node n) {
-        return n.getMetaData().get("posTag").equals(SentenceBuildingServiceImpl.IT_SENTENCE_BOUNDARY_PUNCT);
+        return n.getContent().getPos().equals(SentenceBuildingServiceImpl.IT_SENTENCE_BOUNDARY_PUNCT);
     }
 }

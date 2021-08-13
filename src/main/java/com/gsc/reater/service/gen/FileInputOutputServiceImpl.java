@@ -6,12 +6,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.InputMismatchException;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class FileInputOutputServiceImpl implements FileInputOutputService {
 
     private final Logger log = LoggerFactory.getLogger(this.getClass());
+    private static final String NO_INPUT_FILE_CONTENT = "NO CONTENT";
 
     @Override
     public Optional<ReaterModel> readModelFile(String path) {
@@ -45,5 +50,20 @@ public class FileInputOutputServiceImpl implements FileInputOutputService {
             log.info("Something has broken!");
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public String readRawTextFile(String path) {
+        String content = FileInputOutputServiceImpl.NO_INPUT_FILE_CONTENT;
+        try {
+            BufferedReader reader = Files.newBufferedReader(Paths.get(path));
+            content = reader.lines().collect(Collectors.joining(" "));
+            reader.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        if (content.equals(FileInputOutputServiceImpl.NO_INPUT_FILE_CONTENT))
+            throw new InputMismatchException("Invalid or Empty Input File");
+        return content;
     }
 }

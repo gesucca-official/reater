@@ -3,52 +3,37 @@ package com.gsc.reater.model;
 import lombok.Getter;
 
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 @Getter
 public class Node implements Serializable {
 
-    private final String content;
+    private final NodeContent content;
     private int weight = 1;
 
-    private final Map<String, Integer> links = new HashMap<>();
-    private final Map<String, String> metaData = new HashMap<>();
+    private final Map<Integer, Integer> links = new HashMap<>();
+    private final Set<List<String>> previousPosChains = new HashSet<>();
 
-    public Node(String content) {
-        this.content = content;
+    public Node(String token, String pos) {
+        this.content = new NodeContent(token, pos);
     }
 
     public void addLinkTo(Node destination) {
-        if (links.containsKey(destination.getContent()))
-            links.put(destination.getContent(), links.get(destination.getContent()) + 1);
-        else links.put(destination.getContent(), 1);
+        if (links.containsKey(destination.getContent().hashCode()))
+            links.put(destination.getContent().hashCode(), links.get(destination.getContent().hashCode()) + 1);
+        else links.put(destination.getContent().hashCode(), 1);
     }
 
     public void mergeNode(Node other) {
         if (!other.content.equals(this.content))
             throw new IllegalArgumentException("Trying to merge nodes with two different contents!");
         this.weight += other.weight;
-        this.metaData.putAll(other.getMetaData());
+        this.previousPosChains.addAll(other.previousPosChains);
         other.links.forEach((key, value) -> this.links.merge(key, value, Integer::sum));
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Node node = (Node) o;
-        return Objects.equals(content, node.content);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(content);
-    }
-
-    @Override
     public String toString() {
-        return "(" + content + ") - " + metaData + " -> " + links;
+        return "(" + content + ")-" + previousPosChains;
     }
 }
