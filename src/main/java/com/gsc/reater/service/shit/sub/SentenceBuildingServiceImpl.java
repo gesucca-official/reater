@@ -20,6 +20,7 @@ public class SentenceBuildingServiceImpl implements SentenceBuildingService {
     //https://github.com/aciapetti/opennlp-italian-models/blob/master/lang/it/POS/tagsDictionaryIt.txt
     private final static List<String> IT_POS_PUNCTUATION = List.of("FC", "FF", "FS");
     private final static List<String> IT_POS_BAL_PUNCT = List.of("FB");
+    private final static String IT_SENTENCE_BOUNDARY_PUNCT = "FS";
 
     private final GeneralMathService mathService;
 
@@ -62,7 +63,7 @@ public class SentenceBuildingServiceImpl implements SentenceBuildingService {
     @Override
     public boolean hasTerminalLinks(Node node, Network network) {
         for (String l : node.getLinks().keySet())
-            if (network.deepSearch(l).isTerminal())
+            if (isTerminal(network.deepSearch(l)))
                 return true;
         return false;
     }
@@ -73,7 +74,7 @@ public class SentenceBuildingServiceImpl implements SentenceBuildingService {
 
         List<Node> candidates = new ArrayList<>();
         for (String l : node.getLinks().keySet())
-            if (network.deepSearch(l).isTerminal())
+            if (isTerminal(network.deepSearch(l)))
                 for (int i = 0; i < node.getLinks().get(l); i++)
                     candidates.add(network.deepSearch(l));
         log.info("Candidates (multiplied by weight): " + prettifyCandidates(candidates));
@@ -89,11 +90,10 @@ public class SentenceBuildingServiceImpl implements SentenceBuildingService {
                 || currentNode.getContent().equals("'")) // connect apostrophe
             sentence.setLength(sentence.length() - 1);
         sentence.append(currentNode.getContent());
-        if (previousNode == null)
-            return;
         if (!SentenceBuildingServiceImpl.IT_POS_BAL_PUNCT.contains(currentNode.getMetaData().get("posTag"))
                 || (currentNode.getContent().equals("po") && currentNode.getContent().equals("'")))
             sentence.append(" ");
+        log.info("Sentence so far: " + sentence);
     }
 
     private String prettifyCandidates(List<Node> candidates) {
@@ -108,5 +108,9 @@ public class SentenceBuildingServiceImpl implements SentenceBuildingService {
                         return c1.substring(0, c1.lastIndexOf("(x") + 2) + (qty + 1) + ")";
                     else return c1 + "," + c2;
                 }).orElse("ERROR PRETTIFYING CANDIDATES");
+    }
+
+    private boolean isTerminal(Node n) {
+        return n.getMetaData().get("posTag").equals(SentenceBuildingServiceImpl.IT_SENTENCE_BOUNDARY_PUNCT);
     }
 }

@@ -20,10 +20,6 @@ public class Node implements Serializable {
         this.content = content;
     }
 
-    public boolean isTerminal() {
-        return links.size() == 0; // TODO this cannot be the sole condition to be terminal
-    }
-
     public void addLinkTo(Node destination) {
         if (links.containsKey(destination.getContent()))
             links.put(destination.getContent(), links.get(destination.getContent()) + 1);

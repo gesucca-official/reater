@@ -37,13 +37,12 @@ public class ShittingServiceImpl implements ShittingService {
         if (optionalModel.isEmpty())
             throw new RuntimeException("Could not load Reater Model");
 
-        log.info(optionalModel.get().toString());
+        log.info("\n" + optionalModel.get());
 
         List<String> sentences = new ArrayList<>(numberOfSentences);
         for (int i = 0; i < numberOfSentences; i++) {
             sentences.add(generateSentence(optionalModel.get()));
         }
-
         return sentences;
     }
 
@@ -52,24 +51,41 @@ public class ShittingServiceImpl implements ShittingService {
         Node currentNode = sentenceBuildingService.chooseEntryPoint(model);
         sentenceBuildingService.localizedAppend(currentNode, null, sentence, SupportedLanguages.IT);
         int currentSentenceLength = 1;
+
         while (currentNode.getLinks().size() > 0) {
             Node previousNode = currentNode;
             currentNode = sentenceBuildingService.chooseNextToken(currentNode, model);
             sentenceBuildingService.localizedAppend(currentNode, previousNode, sentence, SupportedLanguages.IT);
             currentSentenceLength++;
-            int chance = mathService.randomToMax(100);
-            if (Math.abs(currentSentenceLength - model.getAvgLength()) > model.getLengthsStdDev())
-                if (chance < 90 && sentenceBuildingService.hasTerminalLinks(currentNode, model.getTokensNetwork())) {
-                    sentenceBuildingService.localizedAppend(
-                            sentenceBuildingService.chooseAmongTerminalLinks(currentNode, model.getTokensNetwork()), currentNode, sentence, SupportedLanguages.IT);
-                    break;
-                } else if (chance < 99 && sentenceBuildingService.hasTerminalLinks(currentNode, model.getTokensNetwork())) {
-                    sentenceBuildingService.localizedAppend(
-                            sentenceBuildingService.chooseAmongTerminalLinks(currentNode, model.getTokensNetwork()), currentNode, sentence, SupportedLanguages.IT);
-                    break;
-                }
+            if (forceEndOfSentence(model, sentence, currentNode, currentSentenceLength)) break;
         }
         return sentence.toString();
+    }
+
+    private boolean forceEndOfSentence(ReaterModel model, StringBuilder sentence, Node currentNode, int currentSentenceLength) {
+        int chance = mathService.randomToMax(100);
+        boolean isInStdDevRange = Math.abs(currentSentenceLength - model.getAvgLength()) < model.getLengthsStdDev();
+        boolean sentenceCanBeEnded = sentenceBuildingService.hasTerminalLinks(currentNode, model.getTokensNetwork());
+
+        log.info("Sentence Length: " + currentSentenceLength);
+        log.info("Is Sentence Length in StdDev Range? " + isInStdDevRange);
+        log.info("Sentence Can Be Ended? " + sentenceCanBeEnded);
+        log.info("Random Factor: " + chance);
+
+        if (sentenceCanBeEnded)
+            if (isInStdDevRange) {
+                if (chance < 75)
+                    return appendFinalToken(model, sentence, currentNode, "Ending Sentence in StdDev Range due to Chance < 75");
+            } else if (chance < 20)
+                return appendFinalToken(model, sentence, currentNode, "Ending Sentence NOT in StdDev Range due to Chance < 20");
+        return false;
+    }
+
+    private boolean appendFinalToken(ReaterModel model, StringBuilder sentence, Node currentNode, String s) {
+        log.info(s);
+        sentenceBuildingService.localizedAppend(
+                sentenceBuildingService.chooseAmongTerminalLinks(currentNode, model.getTokensNetwork()), currentNode, sentence, SupportedLanguages.IT);
+        return true;
     }
 
 }
